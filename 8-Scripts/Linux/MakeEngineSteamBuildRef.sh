@@ -6,8 +6,8 @@
 # is repointed. A real directory is never deleted.
 #
 # Usage:
-#   ./MakeSteamRef.sh                    auto-detect the editor
-#   ./MakeSteamRef.sh /path/to/editor    use an explicit path, skipping detection
+#   ./MakeEngineSteamBuildRef.sh                    auto-detect the editor
+#   ./MakeEngineSteamBuildRef.sh /path/to/editor    use an explicit path, skipping detection
 #
 # The SBOX_EDITOR environment variable does the same as passing a path.
 set -euo pipefail
@@ -168,7 +168,7 @@ if [ -z "$TARGET" ]; then
     echo
     fail "Could not find '$EDITOR_DIRNAME' in any Steam library."
     fail "Install the s&box editor through Steam, or pass the path directly:"
-    fail "    ./MakeSteamRef.sh /path/to/steamapps/common/$EDITOR_DIRNAME"
+    fail "    ./MakeEngineSteamBuildRef.sh /path/to/steamapps/common/$EDITOR_DIRNAME"
     exit 1
 fi
 

@@ -6,15 +6,18 @@ REM Safe to re-run. An existing correct link is left alone; an existing wrong
 REM link is repointed. A real directory is never deleted.
 REM
 REM Usage:
-REM   MakeSteamRef.bat                     auto-detect the editor
-REM   MakeSteamRef.bat C:\path\to\editor   use an explicit path, skipping detection
+REM   MakeEngineSteamBuildRef.bat                     auto-detect the editor
+REM   MakeEngineSteamBuildRef.bat C:\path\to\editor   use an explicit path, skipping detection
 REM
 REM The SBOX_EDITOR environment variable does the same as passing a path.
 setlocal EnableExtensions EnableDelayedExpansion
 
 set "SCRIPT_DIR=%~dp0"
 if "%SCRIPT_DIR:~-1%"=="\" set "SCRIPT_DIR=%SCRIPT_DIR:~0,-1%"
-set "LINK_PATH=%SCRIPT_DIR%\Steam"
+REM The link lives in 1-Engine-Builds, two levels up from 8-Scripts\Windows.
+REM Normalize so the path shown to the user has no ..\.. in it.
+for %%I in ("%SCRIPT_DIR%\..\..\1-Engine-Builds") do set "LINK_DIR=%%~fI"
+set "LINK_PATH=%LINK_DIR%\Steam"
 set "EDITOR_DIRNAME=sbox-editor"
 
 set "HR=-----------------------------------------------------------------------"
@@ -139,7 +142,7 @@ if not defined TARGET (
     echo.
     call :fail "Could not find '%EDITOR_DIRNAME%' in any Steam library."
     call :fail "Install the s^&box editor through Steam, or pass the path directly:"
-    call :fail "    MakeSteamRef.bat C:\path\to\steamapps\common\%EDITOR_DIRNAME%"
+    call :fail "    MakeEngineSteamBuildRef.bat C:\path\to\steamapps\common\%EDITOR_DIRNAME%"
     exit /b 1
 )
 
@@ -151,8 +154,16 @@ echo.
 call :info "Link target resolved to: %TARGET%"
 
 REM A quick sanity check. Not fatal, since the layout may change.
+REM
+REM Uses 'dir /b' rather than a bare FOR over "%TARGET%\*.exe". A quoted
+REM wildcard in a FOR set is not reliably expanded across cmd implementations,
+REM and when it is not, the pattern is treated as a literal name that matches
+REM nothing, producing a bogus "No .exe found" on a perfectly good install.
+REM 'dir /b' does the globbing itself and behaves the same everywhere.
 set "FOUND_EXE="
-for %%E in ("%TARGET%\*.exe") do if not defined FOUND_EXE set "FOUND_EXE=%%~nxE"
+for /f "delims=" %%E in ('dir /b "%TARGET%\*.exe" 2^>nul') do (
+    if not defined FOUND_EXE set "FOUND_EXE=%%~nxE"
+)
 if defined FOUND_EXE (
     call :ok "Editor executable present: %FOUND_EXE%"
 ) else (
@@ -171,7 +182,7 @@ if not exist "%LINK_PATH%" goto :make_link
 REM Distinguish a link from a real directory. /a:l lists reparse points only, so
 REM a bare listing filtered to an exact name match tells us which one this is.
 set "IS_LINK="
-for /f "delims=" %%L in ('dir /a:l /b "%SCRIPT_DIR%" 2^>nul') do (
+for /f "delims=" %%L in ('dir /a:l /b "%LINK_DIR%" 2^>nul') do (
     if /i "%%L"=="Steam" set "IS_LINK=1"
 )
 
@@ -208,7 +219,7 @@ echo   [ run] mklink /J "%LINK_PATH%" "%TARGET%"
 mklink /J "%LINK_PATH%" "%TARGET%" >nul 2>&1
 if errorlevel 1 (
     call :fail "Could not create a link at %LINK_PATH%"
-    call :fail "Check the target path and that you can write to %SCRIPT_DIR%"
+    call :fail "Check the target path and that you can write to %LINK_DIR%"
     exit /b 1
 )
 call :ok "Directory junction created."
