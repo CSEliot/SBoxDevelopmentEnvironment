@@ -1,0 +1,36 @@
+GUIDE: How to Run||Build S&Box Editor From Source in Linux (FREE, NO STEAM!)
+
+(Some of these instructions are done to be overly cautious or made for the "less-experienced". 
+    Feel free to assume intent behind some instructions and do things your own way.)
+1. mkdir ~/SBox
+2. cd ~/SBox
+3. git clone https://github.com/vinceTheProgrammer/sbox-win-docker
+4. git clone https://github.com/Facepunch/sbox-public
+5. Follow all instructions in the readme from step 3.
+6. Open Steam > Games > Add Non-Steam Game > (Click 'sbox-dev.exe' under ~/SBox/sbox-public/game/)
+6a. I know the title literally has "NO STEAM" on it. These parts are just for Proton. You can also lookup online how to run proton without Steam. It's not recommended.
+7. Right click your newly added sbox-dev.exe entry in your steam library > Properties > Compatibility > Click 'Force the use ...' and select Proton 11 (beta) or later. 
+7a. Proton 11 (or later) should take some time to download and install if you don't already have it.
+8. Click the big ol' "Play" steam button.
+9. A prompt to install and download .NET 10 should come up. Positively follow-through and use ProtonTricks to install it for your newly added wine environment.
+9a. Each game that's run on steam via Compatibility has it's own wine environment, also known as a wine/proton prefix. ProtonTricks GUI should walk you through installing .NET10 through your non-steam game's prefix.
+10. If you don't yet own the game via steam, find in the engine source code "Application.cs" and change the AppID value to 480 and recompile.
+11. Play the "game" and launch the Sweeper sample project. If you notice any issues w your linux ui, close the editor and launcher and do the following:
+11a. Open ProtonTricks GUI and it should show you a number next to your "game". That's a unique ID, and also your non-steam-game-ID. Save this.
+11b. With that ID, replace the final number at the end of this oneliner script: 
+    ```
+    protontricks -c "wine reg add 'HKEY_CURRENT_USER\Software\Wine\X11 Driver' /v 'Decorated' /t REG_SZ /d 'N' /f && wine reg add 'HKEY_CURRENT_USER\Control Panel\Desktop' /v 'FontSmoothing' /t REG_SZ /d '2' /f && wine reg add 'HKEY_CURRENT_USER\Control Panel\Desktop' /v 'FontSmoothingType' /t REG_DWORD /d 2 /f && wine reg add 'HKCU\Software\Wine\DllOverrides' /v comdlg32 /d native /f" 2149685131
+    ```
+
+WINDOWS USERS -> Remove all steps involving proton/steam and you should be good to go.
+
+Contact Me @CSEliot on Discord for Questions. I also am active in the sbox and sbox-linux discords.
+
+Notes:
+You're expected to know what git is and what a terminal is. If not, getting this far without that knowledge is Very impressive. Good luck!
+You can ALSO just download the Editor from Steam :)
+
+PERSONAL PURPOSE FOR EACH INSTALL:
+Steam Official: Testing on Experimental, has all launch configs. bleeding edge proton AND bleeding edge editor
+Personal-Fork: Running on 11 Beta, all launch configs, bleeding edge proton but stable editor
+Vanilla: Running on 10.0.04 Proton, no launch configs, stable

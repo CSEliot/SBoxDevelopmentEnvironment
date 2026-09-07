@@ -1,0 +1,13 @@
+3-Documentation/
+2-Docs-Github-Repo/
+Steam/
+Steam
+sbox-public/
+.claude
+.directory
+.megaignore
+/0-Builds/MyGame1
+/0-Builds/MyGame2
+/0-Builds/README.md
+.ig*
+desktop.ini

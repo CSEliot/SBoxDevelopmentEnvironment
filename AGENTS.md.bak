@@ -1,0 +1,98 @@
+# AGENTS.md
+
+Multi-project workspace for the **s&box** engine (Facepunch C# game engine + UGC platform), running
+on Linux via Proton. The workspace root is NOT a git repo — each subdirectory under `3-Projects/` is
+its own clone. Two kinds of work live here: **SecBox** (a .NET security scanner for s&box editor
+libraries, normal `dotnet build`) and **s&box game projects** (`.sbproj`, compiled by the editor, not
+by `dotnet`).
+
+`CLAUDE.md` at the root is the long-form companion to this file (SecBox architecture, bridge
+protocol, CI job graph, per-project notes). Both are current as of the last audit.
+
+## Layout
+
+| Path | What |
+|---|---|
+| `3-Projects/1-SecBox-Core/` | Primary .NET project (`Secbox.slnx`), own git repo, branch `main` |
+| `3-Projects/kingofgamesmuseum/` | Rubixo game, branch `steam-independent`; Node backend in `Server/` |
+| `3-Projects/kingofgamesmuseum-B-Branch/` | SAME repo, second working copy, branch `main` |
+| `3-Projects/terrygotchi/`, `mysweeper/`, `sbox-scenestaging/`, `sbox-bombroyale/` | Other game repos |
+| `3-Projects/2-SecBox/` | Not a project — holds `updatePrefixFromDev` (Linux rsync into the Proton prefix) |
+| `2-Engine-Builds/{Dev,Steam,Vanilla}/sbox-public/` | Three engine source checkouts (read-only reference) |
+| `4-Documentation/2-Docs-Github-Repo/docs/` | Local clone of the official sbox.game manual |
+| `4-Documentation/API/api/{Class,Enum,Interface,Struct}/` | Scraped per-type API reference |
+| `4-Documentation/3-Research/` | `sbox-editor-mcp.md`, `networking.md`, `shader-authoring-in-sbox.md` |
+| `6-Steam-Installs/` | Symlink to `~/.local/share/Steam/steamapps/common/` (holds the live `sbox` install) |
+| `0-Builds/`, `DELETEME-*`, `3-Projects/deleteme*`, `* - Copy` | Scratch/dead. Do not edit. |
+
+Root notes worth reading before touching engine APIs: `SBox-For-Developers.md`, `SBox-Quirks.md`,
+`Building-Settings-UI.md`, `Install.md` (Linux/Proton engine build).
+
+## Dev environment
+
+- `dotnet` is NOT on PATH by default. Run `export PATH="$HOME/.dotnet:$PATH"` once per shell session
+  (SDK 10.0.400).
+- Node v22 is on PATH; used only by `kingofgamesmuseum/Server/`.
+- `SBOX_ROOT` must be exported on this machine:
+  `export SBOX_ROOT=/home/cseliot/.local/share/Steam/steamapps/common/sbox`. `SboxRoot.props` only
+  auto-probes Windows Steam paths, so without it every `*-verify` build fails.
+
+## Build & test
+
+SecBox (`cd 3-Projects/1-SecBox-Core`):
+```bash
+dotnet build Secbox.slnx -c Release
+dotnet run --project src/Secbox.Cli -- info
+dotnet run --project src/Secbox.Cli -- scan /path/to/library/folder
+```
+Output is JSON (`ScanReport`); pipe to `jq`. Must build with **zero warnings**
+(`CONTRIBUTING.md`). No automated tests exist yet; CI detects their absence and skips.
+The dev-drop MSBuild target is gated on `'$(OS)' == 'Windows_NT'`, so `SECBOX_SKIP_DEVDROP=1` is a
+no-op here.
+
+Game code compile-gate (per working copy — `kingofgamesmuseum`, `kingofgamesmuseum-B-Branch`,
+`terrygotchi` each have their own `*-verify/`):
+```bash
+cd 3-Projects/kingofgamesmuseum/kingofgamesmuseum-verify
+dotnet run -c Release --project razorgen/razorgen.csproj   # only if .razor changed; run FIRST
+dotnet build kingofgamesmuseum-game.csproj -c Release
+```
+
+Rubixo backend (`cd 3-Projects/kingofgamesmuseum/Server`): `npm run dev` (nodemon+ts-node),
+`npm run build` (tsc), `npm start`. Type-check only: `npx tsc --noEmit -p tsconfig.json`.
+Listens on `PORT` env or 8080.
+
+## Conventions
+
+- SecBox: `net10.0`, nullable + implicit usings ON, dependency direction strictly
+  `Contracts <- Rules <- Scanner <- Core <- Cli`. Branch from `main`, one concern per PR,
+  commit subject `type: summary`. Bump rule-pack semver when editing `CriticalPack`/`NativeBinaryPack`.
+- Game code: `ImplicitUsings` and `Nullable` are **off**. Files sit flat in `Code/`, one type per
+  file, PascalCase matching the type (`GameController.cs`, `CubeController.cs`).
+- No em-dashes in source or docs — use a hyphen.
+- No Claude/Anthropic attribution in commits, PRs, comments, or committed docs.
+- Inspector tooltips come from the XML `<summary>` comment; hand-writing `[Description]` warns SB2000.
+  Escape `&`/`<`/`>` in summaries (`S&amp;Box`) or the tooltip is silently dropped (CS1570).
+
+## Pitfalls
+
+- **Never trust recalled `Sandbox.*` API.** Check `4-Documentation/API/api/` and
+  `4-Documentation/2-Docs-Github-Repo/docs/` before referencing any type or member. The docs clone is
+  a nested git repo — one empty recursive grep across `4-Documentation` is not proof of absence; use
+  glob + read on the path implied by the doc URL.
+- **`dotnet build` on a `.sbproj` game or its `Code/*.csproj` fails** — DLL refs are relative to a
+  Windows Steam path. Use the `*-verify` gate instead. That gate is compile-only: it proves nothing
+  about networking, scene layout, or Razor rendering. Playtest in the editor.
+- **Two `kingofgamesmuseum` copies, identical relative paths, same `.sbproj` Ident
+  (`kingofgamesmuseum-rubixo`)** — publishing from either pushes to the same package slot. Confirm
+  which copy a task means before editing. The editor MCP server (`http://127.0.0.1:7269/mcp`, see
+  `4-Documentation/3-Research/sbox-editor-mcp.md`) only ever targets the original, never B-Branch.
+- Do not commit generated `.razor.cs` into a project tree — collides with the editor transpile
+  (SB6001). `*-verify/gen/` is generated output, never hand-edit it.
+- Editor hotload can keep running a stale assembly; force a recompile before debugging "my change did
+  nothing".
+- Standalone exports have **no pause menu or settings modal** — `Game.Overlay.Show*()` silently
+  no-ops, and engine `RenderSettings`/`ConVarSystem`/volume setters are `internal`. Games must build
+  their own settings UI (`Building-Settings-UI.md`).
+- `src/Secbox.Sentinel.{Client,Contracts,Engine,Service,Setup}/` are empty placeholders — no csproj,
+  no sources. Only `Secbox.Sentinel.AlertUI` is real. Don't cite the sidecar as existing.
