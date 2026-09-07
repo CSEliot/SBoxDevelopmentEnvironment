@@ -14,7 +14,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 LINK_PATH="$SCRIPT_DIR/../../1-Engine-Builds/Steam"
-EDITOR_DIRNAME="sbox-editor"
+EDITOR_DIRNAME="sbox"
 
 hr() {
     echo "-----------------------------------------------------------------------"
