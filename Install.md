@@ -1,11 +1,9 @@
 # Install
 
 How to set up this workspace. Nothing here is automatic and nothing here is
-mandatory: each directory is independent, so clone the ones you want and skip
-the rest. The numbered prefixes are sort order, not a required sequence.
+mandatory. To get started, run the scripts of your choosing under /8-Scripts/.
 
-The workspace root is a plain folder holding several unrelated git clones. It
-does not pull them in for you, and there is no submodule wiring.
+Folder organization uses numbers for easier terminal navigation, that's all.
 
 ## What you need
 
